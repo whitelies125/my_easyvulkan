@@ -2,12 +2,10 @@
 
 int main()
 {
-    if (!InitializeWindow({1280, 720})) return -1;  // 来个你讨厌的返回值
+    if (!InitializeWindow({1280, 720})) return -1;
     while (!glfwWindowShouldClose(pWindow)) {
-        /*渲染过程，待填充*/
-
-        glfwPollEvents();
         TitleFps();
+        glfwPollEvents();
     }
     TerminateWindow();
     return 0;
