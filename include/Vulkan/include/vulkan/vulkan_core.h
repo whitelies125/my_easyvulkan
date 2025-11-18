@@ -8755,16 +8755,16 @@ typedef enum VkCompositeAlphaFlagBitsKHR {
 typedef VkFlags VkCompositeAlphaFlagsKHR;
 typedef VkFlags VkSurfaceTransformFlagsKHR;
 typedef struct VkSurfaceCapabilitiesKHR {
-    uint32_t                         minImageCount;
-    uint32_t                         maxImageCount;
-    VkExtent2D                       currentExtent;
-    VkExtent2D                       minImageExtent;
-    VkExtent2D                       maxImageExtent;
-    uint32_t                         maxImageArrayLayers;
-    VkSurfaceTransformFlagsKHR       supportedTransforms;
-    VkSurfaceTransformFlagBitsKHR    currentTransform;
-    VkCompositeAlphaFlagsKHR         supportedCompositeAlpha;
-    VkImageUsageFlags                supportedUsageFlags;
+    uint32_t                         minImageCount;           // 支持的最小 image 数量，至少为 1
+    uint32_t                         maxImageCount;           // 支持的最大 image 数量，0 表示无限制，否则表示最大值
+    VkExtent2D                       currentExtent;           // 当前 surface 的宽、高
+    VkExtent2D                       minImageExtent;          // 支持的 image 最小宽、高
+    VkExtent2D                       maxImageExtent;          // 支持的 image 最大宽、高
+    uint32_t                         maxImageArrayLayers;     // 支持的最大 image 层数，至少为 1
+    VkSurfaceTransformFlagsKHR       supportedTransforms;     // 支持的 transform 能力
+    VkSurfaceTransformFlagBitsKHR    currentTransform;        // 当前的 transform 能力
+    VkCompositeAlphaFlagsKHR         supportedCompositeAlpha; // 支持的 alpha 混合能力
+    VkImageUsageFlags                supportedUsageFlags;     // 支持的使用方式
 } VkSurfaceCapabilitiesKHR;
 
 typedef struct VkSurfaceFormatKHR {
@@ -8846,24 +8846,24 @@ typedef enum VkDeviceGroupPresentModeFlagBitsKHR {
 } VkDeviceGroupPresentModeFlagBitsKHR;
 typedef VkFlags VkDeviceGroupPresentModeFlagsKHR;
 typedef struct VkSwapchainCreateInfoKHR {
-    VkStructureType                  sType;
+    VkStructureType                  sType; // 指明结构体类型
     const void*                      pNext;
     VkSwapchainCreateFlagsKHR        flags;
     VkSurfaceKHR                     surface;
-    uint32_t                         minImageCount;
-    VkFormat                         imageFormat;
-    VkColorSpaceKHR                  imageColorSpace;
-    VkExtent2D                       imageExtent;
-    uint32_t                         imageArrayLayers;
-    VkImageUsageFlags                imageUsage;
-    VkSharingMode                    imageSharingMode;
-    uint32_t                         queueFamilyIndexCount;
-    const uint32_t*                  pQueueFamilyIndices;
-    VkSurfaceTransformFlagBitsKHR    preTransform;
-    VkCompositeAlphaFlagBitsKHR      compositeAlpha;
-    VkPresentModeKHR                 presentMode;
-    VkBool32                         clipped;
-    VkSwapchainKHR                   oldSwapchain;
+    uint32_t                         minImageCount;    // 所需的最小可呈现 image 数量
+    VkFormat                         imageFormat;      // image 格式
+    VkColorSpaceKHR                  imageColorSpace;  // image 色彩空间
+    VkExtent2D                       imageExtent;      // image 宽、高
+    uint32_t                         imageArrayLayers; // 对于普通 2D 显示设备，该值为 1，对于多视点或立体显示设备，需要提供视点数
+    VkImageUsageFlags                imageUsage;       // image 使用方式
+    VkSharingMode                    imageSharingMode; // image 分享模式
+    uint32_t                         queueFamilyIndexCount; // 队列族索引个数
+    const uint32_t*                  pQueueFamilyIndices;   // 队列族索引首地址
+    VkSurfaceTransformFlagBitsKHR    preTransform;   // 变换操作
+    VkCompositeAlphaFlagBitsKHR      compositeAlpha; // 混合操作
+    VkPresentModeKHR                 presentMode;    // 呈现模式
+    VkBool32                         clipped;        // 是否舍弃 surface 中不会显示部分的渲染操作
+    VkSwapchainKHR                   oldSwapchain;   // 旧的交换链，用于重建交换链时使用
 } VkSwapchainCreateInfoKHR;
 
 typedef struct VkPresentInfoKHR {

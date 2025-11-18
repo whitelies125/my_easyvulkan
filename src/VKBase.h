@@ -134,6 +134,7 @@ class graphicsBase {
     }
     VkResult CreateSwapchain_Internal()
     {
+        // 创建 swapchain
         if (VkResult result =
                 vkCreateSwapchainKHR(device, &swapchainCreateInfo, nullptr, &swapchain)) {
             std::cout << std::format(
@@ -142,6 +143,8 @@ class graphicsBase {
             return result;
         }
 
+        // 创建 image view
+        // 先查询 swapchain 中的 image
         uint32_t swapchainImageCount;
         if (VkResult result =
                 vkGetSwapchainImagesKHR(device, swapchain, &swapchainImageCount, nullptr)) {
@@ -160,6 +163,7 @@ class graphicsBase {
             return result;
         }
 
+        // 然后为已存在的 image 创建其 image view，类似 C++ 的 std::string_view
         swapchainImageViews.resize(swapchainImageCount);
         VkImageViewCreateInfo imageViewCreateInfo = {
             .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
@@ -643,6 +647,7 @@ public:
     VkResult GetSurfaceFormats()
     {
         uint32_t surfaceFormatCount;
+        // 查询 surface 支持的 image 格式 和 色彩空间
         if (VkResult result = vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface,
                                                                    &surfaceFormatCount, nullptr)) {
             std::cout << std::format(
@@ -684,6 +689,8 @@ public:
                     break;
                 }
         if (!formatIsAvailable) return VK_ERROR_FORMAT_NOT_SUPPORTED;
+        // 考虑到该函数可能在运行过程中被调用，例如运行过程中开启/关闭 HDR 功能
+        // 所以需要考虑到 swapchain 已存在的情况，已存在则重建
         if (swapchain) return RecreateSwapchain();
         return VK_SUCCESS;
     }
@@ -691,6 +698,7 @@ public:
     {
         // Get surface capabilities
         VkSurfaceCapabilitiesKHR surfaceCapabilities = {};
+        // 查询 surface 的能力
         if (VkResult result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface,
                                                                         &surfaceCapabilities)) {
             std::cout << std::format(
@@ -700,22 +708,25 @@ public:
             return result;
         }
         // Set image count
+        // 一般 surface 支持的 minImageCount 都会是 2，毕竟双缓冲
         swapchainCreateInfo.minImageCount =
             surfaceCapabilities.minImageCount +
             (surfaceCapabilities.maxImageCount > surfaceCapabilities.minImageCount);
         // Set image extent
         swapchainCreateInfo.imageExtent =
-            surfaceCapabilities.currentExtent.width == -1
-                ? VkExtent2D {glm::clamp(defaultWindowSize.width,
+            surfaceCapabilities.currentExtent.width == -1  // width、height 都为 -1 表示当前未指定
+                ? VkExtent2D {glm::clamp(defaultWindowSize.width,  // 未指定就设置一下
                                          surfaceCapabilities.minImageExtent.width,
                                          surfaceCapabilities.maxImageExtent.width),
                               glm::clamp(defaultWindowSize.height,
                                          surfaceCapabilities.minImageExtent.height,
                                          surfaceCapabilities.maxImageExtent.height)}
-                : surfaceCapabilities.currentExtent;
+                : surfaceCapabilities.currentExtent;  // 已指定就沿用当前
         // Set transformation
+        // 设置变换
         swapchainCreateInfo.preTransform = surfaceCapabilities.currentTransform;
         // Set alpha compositing mode
+        // 设置混合模式
         if (surfaceCapabilities.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR)
             swapchainCreateInfo.compositeAlpha = VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR;
         else
@@ -726,10 +737,13 @@ public:
                     break;
                 }
         // Set image usage
+        // 可作为颜色附件
         swapchainCreateInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
         if (surfaceCapabilities.supportedUsageFlags & VK_IMAGE_USAGE_TRANSFER_SRC_BIT)
+            // 可作为数据传送的 src
             swapchainCreateInfo.imageUsage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
         if (surfaceCapabilities.supportedUsageFlags & VK_IMAGE_USAGE_TRANSFER_DST_BIT)
+            // 可作为数据传送的 dst
             swapchainCreateInfo.imageUsage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
         else
             std::cout << std::format(
@@ -740,6 +754,8 @@ public:
             if (VkResult result = GetSurfaceFormats()) return result;
         // If surface format is not determined, select a a four-component UNORM format
         if (!swapchainCreateInfo.imageFormat)
+            // R8G8B8A8: RGBA 四通道，每个通道 8 位 bit
+            // UNORM: U 无符号整型，NORM 在着色器中使用时会归一化到 [0,1]
             if (SetSurfaceFormat({VK_FORMAT_R8G8B8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR}) &&
                 SetSurfaceFormat({VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR})) {
                 swapchainCreateInfo.imageFormat = availableSurfaceFormats[0].format;
@@ -750,6 +766,7 @@ public:
             }
 
         // Get surface present modes
+        // 查询 surface 支持的呈现模式
         uint32_t surfacePresentModeCount;
         if (VkResult result = vkGetPhysicalDeviceSurfacePresentModesKHR(
                 physicalDevice, surface, &surfacePresentModeCount, nullptr)) {
@@ -772,6 +789,7 @@ public:
             return result;
         }
         // Set present mode to mailbox if available and necessary
+        // 设置呈现模式
         swapchainCreateInfo.presentMode = VK_PRESENT_MODE_FIFO_KHR;
         if (!limitFrameRate)
             for (size_t i = 0; i < surfacePresentModeCount; i++)
@@ -780,12 +798,12 @@ public:
                     break;
                 }
 
-        swapchainCreateInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+        swapchainCreateInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;  // 指示结构体类型
         swapchainCreateInfo.flags = flags;
         swapchainCreateInfo.surface = surface;
-        swapchainCreateInfo.imageArrayLayers = 1;
-        swapchainCreateInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-        swapchainCreateInfo.clipped = VK_TRUE;
+        swapchainCreateInfo.imageArrayLayers = 1;  // 普通 2D 显示设备，设为 1
+        swapchainCreateInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;  // 分享模式设为独占
+        swapchainCreateInfo.clipped = VK_TRUE;                             // 舍弃
 
         if (VkResult result = CreateSwapchain_Internal()) return result;
         for (auto& i : callbacks_createSwapchain) i();
