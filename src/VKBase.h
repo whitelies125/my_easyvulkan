@@ -824,13 +824,17 @@ public:
         swapchainCreateInfo = {};
         debugMessenger = VK_NULL_HANDLE;
     }
+
+    // 重建逻辑设备
     VkResult RecreateDevice(VkDeviceCreateFlags flags = 0)
     {
         if (device) {
+            // 销毁原有的逻辑设备
             if (VkResult result = WaitIdle();
                 result != VK_SUCCESS && result != VK_ERROR_DEVICE_LOST)
                 return result;
             if (swapchain) {
+                // 销毁原有 swapchain
                 ExecuteCallbacks(callbacks_destroySwapchain);
                 for (auto& i : swapchainImageViews)
                     if (i) vkDestroyImageView(device, i, nullptr);
@@ -843,8 +847,11 @@ public:
             vkDestroyDevice(device, nullptr);
             device = VK_NULL_HANDLE;
         }
+        // 创建新的逻辑设备
         return CreateDevice(flags);
     }
+
+    // 有些情况下会需要重建交换链 swapchain，比如开关 HDR，或者窗口大小改变。
     VkResult RecreateSwapchain()
     {
         VkSurfaceCapabilitiesKHR surfaceCapabilities = {};
@@ -856,11 +863,14 @@ public:
                 int32_t(result));
             return result;
         }
+        // 当前的宽、高为 0，常见于最小化到任务栏窗口，则此时不重建交换链
         if (surfaceCapabilities.currentExtent.width == 0 ||
             surfaceCapabilities.currentExtent.height == 0)
             return VK_SUBOPTIMAL_KHR;
         swapchainCreateInfo.imageExtent = surfaceCapabilities.currentExtent;
-        swapchainCreateInfo.oldSwapchain = swapchain;
+        swapchainCreateInfo.oldSwapchain = swapchain;  // 填入旧 swapchain，可能有利于重用一些资源
+        // 重建 swapchain 前，需确保没有正在使用旧的 swapchain
+        // 等待 图形 和 呈现 队列空闲（swapchain 被图形队列写入、被呈现队列读取）
         VkResult result = vkQueueWaitIdle(queue_graphics);
         if (!result && queue_graphics != queue_presentation)
             result = vkQueueWaitIdle(queue_presentation);
@@ -872,11 +882,15 @@ public:
             return result;
         }
 
+        // 销毁 swapchain 时的回调函数
         for (auto& i : callbacks_destroySwapchain) i();
+        // 销毁旧的 image view
         for (auto& i : swapchainImageViews)
             if (i) vkDestroyImageView(device, i, nullptr);
         swapchainImageViews.resize(0);
+        // 创建新的 swapchain
         if (result = CreateSwapchain_Internal()) return result;
+        // 创建 swapchain 时的回调函数
         for (auto& i : callbacks_createSwapchain) i();
         return VK_SUCCESS;
     }
