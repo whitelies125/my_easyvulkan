@@ -4,39 +4,39 @@ namespace vulkan {
 constexpr VkExtent2D defaultWindowSize = {1280, 720};
 
 class graphicsBase {
-    uint32_t apiVersion = VK_API_VERSION_1_0;
-    VkInstance instance;
-    VkPhysicalDevice physicalDevice;
-    VkPhysicalDeviceProperties physicalDeviceProperties;
-    VkPhysicalDeviceMemoryProperties physicalDeviceMemoryProperties;
-    std::vector<VkPhysicalDevice> availablePhysicalDevices;
+    uint32_t apiVersion = VK_API_VERSION_1_0;                         // vulkan 版本
+    VkInstance instance;                                              // vulkan 实例
+    VkPhysicalDevice physicalDevice;                                  // 物理设备
+    VkPhysicalDeviceProperties physicalDeviceProperties;              // 物理设备属性
+    VkPhysicalDeviceMemoryProperties physicalDeviceMemoryProperties;  // 物理设备内存属性
+    std::vector<VkPhysicalDevice> availablePhysicalDevices;           // 可用的物理设备
 
-    VkDevice device;
-    uint32_t queueFamilyIndex_graphics = VK_QUEUE_FAMILY_IGNORED;
-    uint32_t queueFamilyIndex_presentation = VK_QUEUE_FAMILY_IGNORED;
-    uint32_t queueFamilyIndex_compute = VK_QUEUE_FAMILY_IGNORED;
-    VkQueue queue_graphics;
-    VkQueue queue_presentation;
-    VkQueue queue_compute;
+    VkDevice device;                                                   // 逻辑设备
+    uint32_t queueFamilyIndex_graphics = VK_QUEUE_FAMILY_IGNORED;      // 图形 队列族 idx
+    uint32_t queueFamilyIndex_presentation = VK_QUEUE_FAMILY_IGNORED;  // 呈现 队列族 idx
+    uint32_t queueFamilyIndex_compute = VK_QUEUE_FAMILY_IGNORED;       // 计算 队列组 idx
+    VkQueue queue_graphics;                                            // 图形 队列
+    VkQueue queue_presentation;                                        // 呈现 队列
+    VkQueue queue_compute;                                             // 计算 队列
 
-    VkSurfaceKHR surface;
-    std::vector<VkSurfaceFormatKHR> availableSurfaceFormats;
+    VkSurfaceKHR surface;                                     // surface
+    std::vector<VkSurfaceFormatKHR> availableSurfaceFormats;  // 可用的 surface 格式
 
-    VkSwapchainKHR swapchain;
-    std::vector<VkImage> swapchainImages;
-    std::vector<VkImageView> swapchainImageViews;
-    VkSwapchainCreateInfoKHR swapchainCreateInfo = {};
+    VkSwapchainKHR swapchain;                           // 交换链
+    std::vector<VkImage> swapchainImages;               // 交换链图像
+    std::vector<VkImageView> swapchainImageViews;       // image views
+    VkSwapchainCreateInfoKHR swapchainCreateInfo = {};  // 交换链创建信息
 
-    std::vector<const char*> instanceLayers;
-    std::vector<const char*> instanceExtensions;
-    std::vector<const char*> deviceExtensions;
+    std::vector<const char*> instanceLayers;      // 实例 层
+    std::vector<const char*> instanceExtensions;  // 实例 扩展
+    std::vector<const char*> deviceExtensions;    // 设备 扩展
 
-    VkDebugUtilsMessengerEXT debugMessenger;
+    VkDebugUtilsMessengerEXT debugMessenger;  // debug 信息实例
 
-    std::vector<void (*)()> callbacks_createSwapchain;
-    std::vector<void (*)()> callbacks_destroySwapchain;
-    std::vector<void (*)()> callbacks_createDevice;
-    std::vector<void (*)()> callbacks_destroyDevice;
+    std::vector<void (*)()> callbacks_createSwapchain;   // 创建交换链时调用的回调函数
+    std::vector<void (*)()> callbacks_destroySwapchain;  // 销毁交换链时调用的回调函数
+    std::vector<void (*)()> callbacks_createDevice;      // 创建逻辑设备时调用的回调函数
+    std::vector<void (*)()> callbacks_destroyDevice;     // 销毁逻辑设备时调用的回调函数
     // Static
     static graphicsBase singleton;
     //--------------------
