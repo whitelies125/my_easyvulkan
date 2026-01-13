@@ -1,8 +1,8 @@
-# 1,设置工程名称，叫 Fo
+# 1,设置工程名称，叫 easy_vulkan
 project( "easy_vulkan" )
 
 # 2,设置 CMake 最低版本号
-cmake_minimum_required( VERSION 3.2 )
+cmake_minimum_required( VERSION 4.2 )
 
 # 3,设定编译参数
 set(CMAKE_CXX_STANDARD    23)  # 指定 C++ 版本

@@ -1,7 +1,84 @@
 #include "EasyVKStart.h"
 
+#define VK_RESULT_THROW
+
+#define DestroyHandleBy(Func)                                 \
+    if (handle) {                                             \
+        Func(graphicsBase::Base().Device(), handle, nullptr); \
+        handle = VK_NULL_HANDLE;                              \
+    }
+
+#define MoveHandle         \
+    handle = other.handle; \
+    other.handle = VK_NULL_HANDLE;
+
+#define DefineHandleTypeOperator      \
+    operator decltype(handle)() const \
+    {                                 \
+        return handle;                \
+    }
+
+#define DefineAddressFunction               \
+    const decltype(handle)* Address() const \
+    {                                       \
+        return &handle;                     \
+    }
+
+#ifndef NDEBUG
+#define ENABLE_DEBUG_MESSENGER true
+#else
+#define ENABLE_DEBUG_MESSENGER false
+#endif
+
 namespace vulkan {
 constexpr VkExtent2D defaultWindowSize = {1280, 720};
+inline auto& outStream = std::cout;  // 不是constexpr，因为std::cout具有外部链接
+
+// 情况1：根据函数返回值确定是否抛异常
+#ifdef VK_RESULT_THROW
+class result_t {
+    VkResult result;
+
+public:
+    static void (*callback_throw)(VkResult);
+    result_t(VkResult result) : result(result) {}
+    result_t(result_t&& other) noexcept : result(other.result)
+    {
+        other.result = VK_SUCCESS;
+    }
+    ~result_t() noexcept(false)
+    {
+        if (uint32_t(result) < VK_RESULT_MAX_ENUM) return;
+        if (callback_throw) callback_throw(result);
+        throw result;
+    }
+    operator VkResult()
+    {
+        VkResult result = this->result;
+        this->result = VK_SUCCESS;
+        return result;
+    }
+};
+inline void (*result_t::callback_throw)(VkResult);
+
+// 情况2：若抛弃函数返回值，让编译器发出警告
+#elifdef VK_RESULT_NODISCARD
+struct [[nodiscard]] result_t {
+    VkResult result;
+    result_t(VkResult result) : result(result) {}
+    operator VkResult() const
+    {
+        return result;
+    }
+};
+// 在本文件中关闭弃值提醒（因为我懒得做处理）
+#pragma warning(disable : 4834)
+#pragma warning(disable : 6031)
+
+// 情况3：啥都不干
+#else
+using result_t = VkResult;
+#endif
 
 class graphicsBase {
     uint32_t apiVersion = VK_API_VERSION_1_0;                         // vulkan 版本
@@ -69,7 +146,7 @@ class graphicsBase {
     // Non-const Function
     // 遍历物理设备的所有队列族，获得支持所需操作的队列族索引
     // 队列族: 是一组具有共同属性并支持相同功能的队列，一个队列族至少支持一个队列
-    VkResult GetQueueFamilyIndices(VkPhysicalDevice physicalDevice, bool enableGraphicsQueue,
+    result_t GetQueueFamilyIndices(VkPhysicalDevice physicalDevice, bool enableGraphicsQueue,
                                    bool enableComputeQueue, uint32_t (&queueFamilyIndices)[3])
     {
         uint32_t queueFamilyCount = 0;
@@ -132,7 +209,7 @@ class graphicsBase {
         std::cout << "ic : " << queueFamilyIndex_compute << std::endl;
         return VK_SUCCESS;
     }
-    VkResult CreateSwapchain_Internal()
+    result_t CreateSwapchain_Internal()
     {
         // 创建 swapchain
         if (VkResult result =
@@ -184,7 +261,7 @@ class graphicsBase {
         }
         return VK_SUCCESS;
     }
-    VkResult CreateDebugMessenger()
+    result_t CreateDebugMessenger()
     {
         static PFN_vkDebugUtilsMessengerCallbackEXT DebugUtilsMessengerCallback =
             [](VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -379,20 +456,20 @@ public:
     {
         AddLayerOrExtension(instanceExtensions, extensionName);
     }
-    VkResult UseLatestApiVersion()
+    result_t UseLatestApiVersion()
     {
         if (vkGetInstanceProcAddr(VK_NULL_HANDLE, "vkEnumerateInstanceVersion"))
             return vkEnumerateInstanceVersion(&apiVersion);
         return VK_SUCCESS;
     }
-    VkResult CreateInstance(VkInstanceCreateFlags flags = 0)
+    result_t CreateInstance(VkInstanceCreateFlags flags = 0)
     {
-#ifndef NDEBUG
-        // 添加 layer，启用 验证层
-        AddInstanceLayer("VK_LAYER_KHRONOS_validation");
-        // 添加 extension，该扩展可使开发者可以获得更多信息，例如可以注册回调函数获取 debug 信息
-        AddInstanceExtension(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-#endif
+        if constexpr (ENABLE_DEBUG_MESSENGER) {
+            // 添加 layer，启用 验证层
+            AddInstanceLayer("VK_LAYER_KHRONOS_validation");
+            // 添加 extension，该扩展可使开发者可以获得更多信息，如可注册回调函数获取 debug 信息
+            AddInstanceExtension(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+        }
         VkApplicationInfo applicatianInfo = {.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
                                              .apiVersion = apiVersion};
         VkInstanceCreateInfo instanceCreateInfo = {
@@ -413,13 +490,12 @@ public:
         }
         std::cout << std::format("Vulkan API Version: {}.{}.{}\n", VK_VERSION_MAJOR(apiVersion),
                                  VK_VERSION_MINOR(apiVersion), VK_VERSION_PATCH(apiVersion));
-#ifndef NDEBUG
-        // 用于获取验证层捕获到的 debug 信息
-        CreateDebugMessenger();
-#endif
+        if constexpr (ENABLE_DEBUG_MESSENGER)
+            // 用于获取验证层捕获到的 debug 信息
+            CreateDebugMessenger();
         return VK_SUCCESS;
     }
-    VkResult CheckInstanceLayers(std::span<const char*> layersToCheck) const
+    result_t CheckInstanceLayers(std::span<const char*> layersToCheck) const
     {
         uint32_t layerCount;
         std::vector<VkLayerProperties> availableLayers;
@@ -451,7 +527,7 @@ public:
             for (auto& i : layersToCheck) i = nullptr;
         return VK_SUCCESS;
     }
-    VkResult CheckInstanceExtensions(std::span<const char*> extensionsToCheck,
+    result_t CheckInstanceExtensions(std::span<const char*> extensionsToCheck,
                                      const char* layerName) const
     {
         uint32_t extensionCount;
@@ -508,7 +584,7 @@ public:
     {
         AddLayerOrExtension(deviceExtensions, extensionName);
     }
-    VkResult GetPhysicalDevices()
+    result_t GetPhysicalDevices()
     {
         uint32_t deviceCount;
         if (VkResult result = vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr)) {
@@ -532,7 +608,7 @@ public:
         std::cout << "GetPhysicalDevices num : " << deviceCount << std::endl;
         return result;
     }
-    VkResult DeterminePhysicalDevice(uint32_t deviceIndex = 0, bool enableGraphicsQueue = true,
+    result_t DeterminePhysicalDevice(uint32_t deviceIndex = 0, bool enableGraphicsQueue = true,
                                      bool enableComputeQueue = true)
     {
         // 定义一个特殊值用于标记一个队列族索引已被找过但未找到
@@ -573,7 +649,7 @@ public:
         physicalDevice = availablePhysicalDevices[deviceIndex];
         return VK_SUCCESS;
     }
-    VkResult CreateDevice(VkDeviceCreateFlags flags = 0)
+    result_t CreateDevice(VkDeviceCreateFlags flags = 0)
     {
         float queuePriority = 1.f;
         VkDeviceQueueCreateInfo queueCreateInfos[3] = {
@@ -634,7 +710,7 @@ public:
         std::cout << std::format("Renderer: {}\n", physicalDeviceProperties.deviceName);
         return VK_SUCCESS;
     }
-    VkResult CheckDeviceExtensions(std::span<const char*> extensionsToCheck,
+    result_t CheckDeviceExtensions(std::span<const char*> extensionsToCheck,
                                    const char* layerName = nullptr) const
     {
         return VK_SUCCESS;
@@ -643,8 +719,8 @@ public:
     {
         deviceExtensions = extensionNames;
     }
-    //                    Create Swapchain
-    VkResult GetSurfaceFormats()
+    // Create Swapchain
+    result_t GetSurfaceFormats()
     {
         uint32_t surfaceFormatCount;
         // 查询 surface 支持的 image 格式 和 色彩空间
@@ -669,7 +745,7 @@ public:
                 int32_t(result));
         return result;
     }
-    VkResult SetSurfaceFormat(VkSurfaceFormatKHR surfaceFormat)
+    result_t SetSurfaceFormat(VkSurfaceFormatKHR surfaceFormat)
     {
         bool formatIsAvailable = false;
         if (!surfaceFormat.format) {
@@ -694,7 +770,7 @@ public:
         if (swapchain) return RecreateSwapchain();
         return VK_SUCCESS;
     }
-    VkResult CreateSwapchain(bool limitFrameRate = true, VkSwapchainCreateFlagsKHR flags = 0)
+    result_t CreateSwapchain(bool limitFrameRate = true, VkSwapchainCreateFlagsKHR flags = 0)
     {
         // Get surface capabilities
         VkSurfaceCapabilitiesKHR surfaceCapabilities = {};
@@ -826,7 +902,7 @@ public:
     }
 
     // 重建逻辑设备
-    VkResult RecreateDevice(VkDeviceCreateFlags flags = 0)
+    result_t RecreateDevice(VkDeviceCreateFlags flags = 0)
     {
         if (device) {
             // 销毁原有的逻辑设备
@@ -852,7 +928,7 @@ public:
     }
 
     // 有些情况下会需要重建交换链 swapchain，比如开关 HDR，或者窗口大小改变。
-    VkResult RecreateSwapchain()
+    result_t RecreateSwapchain()
     {
         VkSurfaceCapabilitiesKHR surfaceCapabilities = {};
         if (VkResult result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface,
@@ -894,7 +970,7 @@ public:
         for (auto& i : callbacks_createSwapchain) i();
         return VK_SUCCESS;
     }
-    VkResult WaitIdle() const
+    result_t WaitIdle() const
     {
         VkResult result = vkDeviceWaitIdle(device);
         if (result)
