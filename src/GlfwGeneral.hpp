@@ -1,11 +1,12 @@
 #include "VKBase.h"
+#include "vulkan/vulkan_core.h"
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 #pragma comment(lib, "glfw3.lib")
 
-GLFWwindow* pWindow;
-GLFWmonitor* pMonitor;
-const char* windowTitle = "EasyVK";
+GLFWwindow *pWindow;
+GLFWmonitor *pMonitor;
+const char *windowTitle = "EasyVK";
 
 bool InitializeWindow(VkExtent2D size, bool fullScreen = false, bool isResizable = true,
                       bool limitFrameRate = true)
@@ -23,7 +24,7 @@ bool InitializeWindow(VkExtent2D size, bool fullScreen = false, bool isResizable
     // 获取主显示器 handle
     pMonitor = glfwGetPrimaryMonitor();
     // 获得显示器的一些属性
-    const GLFWvidmode* pMode = glfwGetVideoMode(pMonitor);
+    const GLFWvidmode *pMode = glfwGetVideoMode(pMonitor);
     pWindow = fullScreen
                   // 创建窗口，第四个参数为 nullptr 则为从窗口模式，否则为全屏模式
                   // 全屏一般设置为显示器分辨率相同的宽、高;
@@ -44,7 +45,7 @@ bool InitializeWindow(VkExtent2D size, bool fullScreen = false, bool isResizable
     graphicsBase::Base().AddInstanceExtension(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
 #else
     uint32_t extensionCount = 0;
-    const char** extensionNames;
+    const char **extensionNames;
     // glfw 返回它所需的 vulkan extension
     extensionNames = glfwGetRequiredInstanceExtensions(&extensionCount);
     if (!extensionNames) {
@@ -98,12 +99,12 @@ void TerminateWindow()
 }
 void MakeWindowFullScreen()
 {
-    const GLFWvidmode* pMode = glfwGetVideoMode(pMonitor);
+    const GLFWvidmode *pMode = glfwGetVideoMode(pMonitor);
     glfwSetWindowMonitor(pWindow, pMonitor, 0, 0, pMode->width, pMode->height, pMode->refreshRate);
 }
 void MakeWindowWindowed(VkOffset2D position, VkExtent2D size)
 {
-    const GLFWvidmode* pMode = glfwGetVideoMode(pMonitor);
+    const GLFWvidmode *pMode = glfwGetVideoMode(pMonitor);
     glfwSetWindowMonitor(pWindow, nullptr, position.x, position.y, size.width, size.height,
                          pMode->refreshRate);
 }
