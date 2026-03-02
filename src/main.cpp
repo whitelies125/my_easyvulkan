@@ -53,6 +53,7 @@ int main()
 {
     if (!InitializeWindow({1280, 720})) return -1;
 
+    // 创建渲染通道 render pass 和 帧缓冲 framebuffer
     const auto &[renderPass, framebuffers] = RenderPassAndFramebuffers();
     CreateLayout();
     CreatePipeline();
