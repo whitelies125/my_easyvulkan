@@ -47,24 +47,15 @@ const auto &CreateRpwf_Screen()
                                                    .dependencyCount = 1,
                                                    .pDependencies = &subpassDependency}; // 描述子通道依赖的结构体，子通道依赖定义了渲染过程中不同子通道之间的执行和内存依赖关系
     rpwf.renderPass.Create(renderPassCreateInfo);
-    rpwf.framebuffers.resize(graphicsBase::Base().SwapchainImageCount());
-    VkFramebufferCreateInfo framebufferCreateInfo = {.renderPass = rpwf.renderPass,
-                                                     .attachmentCount = 1,
-                                                     .width = windowSize.width,
-                                                     .height = windowSize.height,
-                                                     .layers = 1};
-    for (size_t i = 0; i < graphicsBase::Base().SwapchainImageCount(); i++) {
-        VkImageView attachment = graphicsBase::Base().SwapchainImageView(i);
-        framebufferCreateInfo.pAttachments = &attachment;
-        rpwf.framebuffers[i].Create(framebufferCreateInfo);
-    }
+
+    // 为 swapchain 中的每个图像创建一个帧缓冲 framebuffer。
     auto CreateFramebuffers = [] {
         rpwf.framebuffers.resize(graphicsBase::Base().SwapchainImageCount());
-        VkFramebufferCreateInfo framebufferCreateInfo = {.renderPass = rpwf.renderPass,
-                                                         .attachmentCount = 1,
-                                                         .width = windowSize.width,
-                                                         .height = windowSize.height,
-                                                         .layers = 1};
+        VkFramebufferCreateInfo framebufferCreateInfo = {.renderPass = rpwf.renderPass, // 相关的渲染通道
+                                                        .attachmentCount = 1, // 必须与 renderPass 中的 attachmentCount 一致
+                                                        .width = windowSize.width, // 帧缓冲的尺寸
+                                                        .height = windowSize.height, // 帧缓冲的尺寸
+                                                        .layers = 1}; // 我们目标是 2D 图像，所以这里为 1，立方体贴图一般为 6，VR 渲染（左右眼）一般为2，这里与 VkImageSubresourceRange::layerCount 相关
         for (size_t i = 0; i < graphicsBase::Base().SwapchainImageCount(); i++) {
             VkImageView attachment = graphicsBase::Base().SwapchainImageView(i);
             framebufferCreateInfo.pAttachments = &attachment;
