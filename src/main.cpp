@@ -62,9 +62,11 @@ int main()
     semaphore semaphore_imageIsAvailable;
     semaphore semaphore_renderingIsOver;
 
-    commandBuffer commandBuffer;
+    // 创建 command pool
     commandPool commandPool(graphicsBase::Base().QueueFamilyIndex_Graphics(),
                             VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+    // 从 command pool 中分配 command buffer
+    commandBuffer commandBuffer;
     commandPool.AllocateBuffers(commandBuffer);
 
     VkClearValue clearColor = {.color = {1.f, 0.f, 0.f, 1.f}};  // 红色
@@ -75,14 +77,17 @@ int main()
         graphicsBase::Base().SwapImage(semaphore_imageIsAvailable);
         auto i = graphicsBase::Base().CurrentImageIndex();
 
-        commandBuffer.Begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+        // command buffer 开始录制 command
+        commandBuffer.Begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT); // VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT 指示这个 cmd buffer 的记录只会被提交一次，然后在下次提交前会被重置和重新录制
         renderPass.CmdBegin(commandBuffer, framebuffers[i], {{}, windowSize},
                             clearColor);  // 开始渲染通道
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_triangle);
         vkCmdDraw(commandBuffer, 3, 1, 0, 0);
         renderPass.CmdEnd(commandBuffer);  // 新增，结束渲染通道
+        // command buffer 结束录制
         commandBuffer.End();
 
+        // 调用 vkQueueSubmit 提交 command buffer
         graphicsBase::Base().SubmitCommandBuffer_Graphics(commandBuffer, semaphore_imageIsAvailable,
                                                           semaphore_renderingIsOver, fence);
         graphicsBase::Base().PresentImage(semaphore_renderingIsOver);

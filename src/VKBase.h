@@ -1034,14 +1034,17 @@ public:
                                           VkPipelineStageFlags waitDstStage_imageIsAvailable =
                                               VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT) const
     {
-        VkSubmitInfo submitInfo = {.commandBufferCount = 1, .pCommandBuffers = &commandBuffer};
+        VkSubmitInfo submitInfo = {.commandBufferCount = 1,  // 提交的 cmd buffer 个数
+                                   .pCommandBuffers = &commandBuffer // 提交的 cmd buffers
+                                  };
         if (semaphore_imageIsAvailable)
-            submitInfo.waitSemaphoreCount = 1,
-            submitInfo.pWaitSemaphores = &semaphore_imageIsAvailable,
-            submitInfo.pWaitDstStageMask = &waitDstStage_imageIsAvailable;
+            submitInfo.waitSemaphoreCount = 1, // pWaitSemaphores 和 pWaitDstStageMask 中元素的个数，都收 waitSemaphoreCount 控制，成对对应
+            submitInfo.pWaitSemaphores = &semaphore_imageIsAvailable, // 执行 command buffer 中的命令前，需要等待的信号量
+            submitInfo.pWaitDstStageMask = &waitDstStage_imageIsAvailable; // 在 pWaitDstStageMask 阶段开始前，才需要等待信号量
+            // 合起来就是，cmd buffer 执行到 pWaitDstStageMask 阶段开始前时，需要等待 semaphore_imageIsAvailable 这个信号量被置位，才开始执行 pWaitDstStageMask
         if (semaphore_renderingIsOver)
             submitInfo.signalSemaphoreCount = 1,
-            submitInfo.pSignalSemaphores = &semaphore_renderingIsOver;
+            submitInfo.pSignalSemaphores = &semaphore_renderingIsOver; // command buffer 中的命令执行完后，需要发送的信号量
         return SubmitCommandBuffer_Graphics(submitInfo, fence);
     }
     // 该函数用于将命令缓冲区提交到用于图形的队列，且只使用栅栏的常见情形
@@ -1313,9 +1316,10 @@ public:
     {
         VkCommandBufferAllocateInfo allocateInfo = {
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-            .commandPool = handle,
-            .level = level,
-            .commandBufferCount = uint32_t(buffers.Count())};
+            .commandPool = handle, // 从这个 command pool 中申j
+            .level = level, // 指定 command buffer 的级别，primary 级别的 cmd buffer 可以直接提交到队列，secondary 级别的 cmd buffer 不能直接提交到队列，只能被 primary 级别的 cmd buffer 调用 vkCmdExecuteCommands 时执行
+            .commandBufferCount = uint32_t(buffers.Count()) // 从 command pool 中分配的 command buffer 的数量
+        };
         VkResult result = vkAllocateCommandBuffers(graphicsBase::Base().Device(), &allocateInfo,
                                                    buffers.Pointer());
         if (result)
@@ -1357,7 +1361,11 @@ public:
     }
     result_t Create(uint32_t queueFamilyIndex, VkCommandPoolCreateFlags flags = 0)
     {
-        VkCommandPoolCreateInfo createInfo = {.flags = flags, .queueFamilyIndex = queueFamilyIndex};
+        VkCommandPoolCreateInfo createInfo = {.flags = flags, // VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT 表示允许将从池中分配的任何 command buffer 单独重置为初始状态；
+                                                              // 可以通过调用 vkResetCommandBuffer 或通过调用 vkBeginCommandBuffer 时的隐式重置来实现。
+                                                              // 如果池未设置此标志，则不得对从该池中分配的任何命令缓冲区调用 vkResetCommandBuffer。
+                                              .queueFamilyIndex = queueFamilyIndex // 指定一个队列族，从这个 command pool 分配的所有 command buffer必须提交到同一队列族中的队列。
+                                            };
         return Create(createInfo);
     }
 };
