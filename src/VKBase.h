@@ -997,6 +997,16 @@ public:
             swapchainCreateInfo.oldSwapchain = VK_NULL_HANDLE;
         }
         // 获取交换链图像索引
+        // VkResult VKAPI_CALL vkAcquireNextImageKHR( // 获取下一个可用于呈现的图像的索引
+        //     VkDevice                                    device,       // 指定逻辑设备
+        //     VkSwapchainKHR                              swapchain,    // 指定交换链
+        //     uint64_t                                    timeout,      // 如果没有 image 可用，可等待的超时时间，单位纳秒，UINT64_MAX 表示无限制
+        //     VkSemaphore                                 semaphore,    // 当获取到 image 在可被安全读写后，会将该信号量置位。注意，并不是在这个函数被调用结束时就置位。
+        //     VkFence                                     fence,        // 当获取到 image 在可被安全读写后，会将该栅栏置位。注意，并不是在这个函数被调用结束时就置位。
+        //     uint32_t*                                   pImageIndex); // 返回获取到的图像索引
+        // 个人理解：vkAcquireNextImageKHR 只是返回给你一个可用的 image，这里的意思更接近是 GPU 已经给你分配了这个 image，但是此时你未必能用，因为这个 image 可能还在被其他操作使用中。
+        // 不过现在你已经可以开始提前给这个 image 安排后续的操作了。但你安排的操作，就要等这个 image 之前的操作完成了，才能真正开始执行你安排的操作，这个时候才置位 semaphore、fence，
+        // 而不是在 vkAcquireNextImageKHR 被调用结束时就置位。
         while (VkResult result =
                    vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, semaphore_imageIsAvailable,
                                          VK_NULL_HANDLE, &currentImageIndex))
@@ -1094,10 +1104,13 @@ public:
     result_t PresentImage(VkSemaphore semaphore_renderingIsOver = VK_NULL_HANDLE)
     {
         VkPresentInfoKHR presentInfo = {
-            .swapchainCount = 1, .pSwapchains = &swapchain, .pImageIndices = &currentImageIndex};
+            .swapchainCount = 1, // 想要请求呈现图像的交换链数量
+            .pSwapchains = &swapchain, // 想要请求呈现图像的交换链数量
+            .pImageIndices = &currentImageIndex // 想要请求呈现的图像在交换链中的索引，这个数组元素与 pSwapchains 中的元素一一对应
+        };
         if (semaphore_renderingIsOver)
-            presentInfo.waitSemaphoreCount = 1,
-            presentInfo.pWaitSemaphores = &semaphore_renderingIsOver;
+            presentInfo.waitSemaphoreCount = 1, // 等待的信号量数组长度
+            presentInfo.pWaitSemaphores = &semaphore_renderingIsOver; // 发出呈现请求 present request 前需要等待的信号量
         return PresentImage(presentInfo);
     }
     // Static Function

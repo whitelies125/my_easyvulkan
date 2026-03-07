@@ -72,6 +72,7 @@ int main()
     VkClearValue clearColor = {.color = {1.f, 0.f, 0.f, 1.f}};  // 红色
 
     while (!glfwWindowShouldClose(pWindow)) {
+        // 如果窗口是最小化状态，就等待事件直到窗口恢复
         while (glfwGetWindowAttrib(pWindow, GLFW_ICONIFIED)) glfwWaitEvents();
         // 获取交换链图像索引
         graphicsBase::Base().SwapImage(semaphore_imageIsAvailable);
