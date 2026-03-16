@@ -1526,6 +1526,7 @@ public:
     result_t Create(VkShaderModuleCreateInfo &createInfo)
     {
         createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+        // 创建 shader module, 可用于创建 pipeline 的创建 shader stage 信息中
         VkResult result =
             vkCreateShaderModule(graphicsBase::Base().Device(), &createInfo, nullptr, &handle);
         if (result)

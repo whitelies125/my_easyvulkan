@@ -17,6 +17,7 @@ const auto &RenderPassAndFramebuffers()
 void CreateLayout()
 {
     VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo {};
+    // 创建管线布局
     pipelineLayout_triangle.Create(pipelineLayoutCreateInfo);
 }
 
@@ -30,17 +31,20 @@ void CreatePipeline()
         frag.StageCreateInfo(VK_SHADER_STAGE_FRAGMENT_BIT)};
     auto Create = [] {
         graphicsPipelineCreateInfoPack pipelineCiPack;
-        pipelineCiPack.createInfo.layout = pipelineLayout_triangle;
-        pipelineCiPack.createInfo.renderPass = RenderPassAndFramebuffers().renderPass;
-        pipelineCiPack.inputAssemblyStateCi.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        pipelineCiPack.createInfo.layout = pipelineLayout_triangle; // 指定管线布局
+        pipelineCiPack.createInfo.renderPass = RenderPassAndFramebuffers().renderPass; // 指定管线要使用的渲染通道
+        pipelineCiPack.inputAssemblyStateCi.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST; // 告知图元 primitive 的拓扑结构类型，这里指定为三角形
+        // 设定视口变换，这里设定为宽高与窗口宽高一致
         pipelineCiPack.viewports.emplace_back(0.f, 0.f, float(windowSize.width),
                                               float(windowSize.height), 0.f, 1.f);
-        pipelineCiPack.scissors.emplace_back(VkOffset2D {}, windowSize);
-        pipelineCiPack.multisampleStateCi.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-        pipelineCiPack.colorBlendAttachmentStates.push_back({.colorWriteMask = 0b1111});
+        // 设定裁剪变换，这里设定为与视口一致的矩形区域
+        pipelineCiPack.scissors.emplace_back(VkOffset2D {}, windowSize); // 指定起始点和基于起始点开始的宽高得到的范围
+        pipelineCiPack.multisampleStateCi.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT; // 不使用多重采样，每个像素点只采样一次
+        pipelineCiPack.colorBlendAttachmentStates.push_back({.colorWriteMask = 0b1111}); // 指定颜色混合状态，这里指定为不使用混合且 RGBA 四通道都写入
         pipelineCiPack.UpdateAllArrays();
-        pipelineCiPack.createInfo.stageCount = 2;
-        pipelineCiPack.createInfo.pStages = shaderStageCreateInfos_triangle;
+        pipelineCiPack.createInfo.stageCount = 2; // 指定 shader stage 的数量
+        pipelineCiPack.createInfo.pStages = shaderStageCreateInfos_triangle; // 要创建的 shader stage 的信息
+        // 创建 pipeline
         pipeline_triangle.Create(pipelineCiPack);
     };
     auto Destroy = [] { pipeline_triangle.~pipeline(); };
@@ -78,14 +82,17 @@ int main()
         graphicsBase::Base().SwapImage(semaphore_imageIsAvailable);
         auto i = graphicsBase::Base().CurrentImageIndex();
 
-        // command buffer 开始录制 command
+        // command buffer 开始录制 command，将这个 cmd buffer 的状态修改为 recording 状态，才可向这个 cmd buffer 录制命令（允许写入命令）
         commandBuffer.Begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT); // VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT 指示这个 cmd buffer 的记录只会被提交一次，然后在下次提交前会被重置和重新录制
+        // 开始渲染通道，vkCmdBeginRenderPass 的 pRenderPassBegin 中含有 framebuffer，可见此处将 framebuffer 和 renderpass 关联上了。
         renderPass.CmdBegin(commandBuffer, framebuffers[i], {{}, windowSize},
-                            clearColor);  // 开始渲染通道
+                            clearColor);  
+        // 绑定图形管线
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_triangle);
         vkCmdDraw(commandBuffer, 3, 1, 0, 0);
-        renderPass.CmdEnd(commandBuffer);  // 新增，结束渲染通道
-        // command buffer 结束录制
+        // 结束渲染通道
+        renderPass.CmdEnd(commandBuffer);  
+        // command buffer 结束录制，将这个 cmd buffer 的状态修改为 executable 状态，不处于 recording 状态了，不允许向这个 cmd buffer 写入命令（禁止写入）
         commandBuffer.End();
 
         // 调用 vkQueueSubmit 提交 command buffer
